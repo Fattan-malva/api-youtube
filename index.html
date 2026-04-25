@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Player Youtube</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: black;
+        overflow: hidden;
+      }
+
+      #theplayer {
+        width: 100%;
+        height: 100%;
+      }
+
+      #controls {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 999;
+        gap: 10px;
+      }
+
+      #controls button {
+        font-size: 16px;
+        padding: 10px 15px;
+        background-color: rgba(255, 255, 255, 0.8);
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      #controls button:hover {
+        background-color: rgba(255, 255, 255, 1);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <button onclick="player?.playVideo()">Play</button>
+      <button onclick="player?.pauseVideo()">Pause</button>
+      <button onclick="replayVideo()">Replay</button>
+      <button onclick="nextVideo()">Next</button>
+    </div>
+
+    <div id="theplayer"></div>
+
+    <script>
+      var tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName("script")[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      var player;
+      var videoList = ["VIDEO_ID_1", "VIDEO_ID_2"]; // Ganti dengan video ID asli
+      var currentVideoIndex = 0;
+
+      function getVideoIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("videoId") || videoList[0];
+      }
+
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player("theplayer", {
+          height: "100%",
+          width: "100%",
+          videoId: getVideoIdFromUrl(),
+          events: {
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange,
+          },
+          playerVars: {
+            autoplay: 1,
+            controls: 1,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+          },
+        });
+      }
+
+      function onPlayerStateChange(event) {
+        if (event.data === YT.PlayerState.ENDED) {
+          console.log("Video telah selesai diputar.");
+          if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage("videoEnded");
+          }
+        }
+      }
+      // var messageSent = false;
+
+      // function onPlayerStateChange(event) {
+      //   if (event.data === YT.PlayerState.ENDED && !messageSent) {
+      //     console.log("Video telah selesai diputar.");
+      //     messageSent = true;
+      //     if (window.chrome && window.chrome.webview) {
+      //       window.chrome.webview.postMessage("videoEnded");
+      //     }
+      //   }
+      // }
+
+      function onPlayerReady(event) {
+        event.target.playVideo();
+
+        const playerElement = document.getElementById("theplayer");
+        setTimeout(() => {
+          if (playerElement.requestFullscreen) {
+            playerElement
+              .requestFullscreen()
+              .catch((err) => console.warn("Fullscreen blocked:", err));
+          } else if (playerElement.webkitRequestFullscreen) {
+            playerElement.webkitRequestFullscreen();
+          } else if (playerElement.msRequestFullscreen) {
+            playerElement.msRequestFullscreen();
+          }
+        }, 500);
+      }
+
+      function replayVideo() {
+        if (player) {
+          player.seekTo(0);
+          player.playVideo();
+        }
+      }
+
+      function nextVideo() {
+        currentVideoIndex = (currentVideoIndex + 1) % videoList.length;
+        const nextId = videoList[currentVideoIndex];
+        player.loadVideoById(nextId);
+      }
+
+      // ✅ Komunikasi dengan VB (WebView2)
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.addEventListener("message", (event) => {
+          const data = event.data;
+
+          if (data === "pause" && player) {
+            player.pauseVideo();
+          }
+
+          if (data === "play" && player) {
+            player.playVideo();
+          }
+
+          if (data === "replay") {
+            replayVideo();
+          }
+
+          if (data === "next") {
+            nextVideo();
+          }
+
+          if (data === "showButtons") {
+            document.getElementById("controls").style.display = "flex";
+          }
+
+          if (data === "hideButtons") {
+            document.getElementById("controls").style.display = "none";
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
