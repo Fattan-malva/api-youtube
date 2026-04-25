@@ -84,7 +84,12 @@ app.get("/search", async (req, res) => {
 });
 
 // Start the server
-app.listen(port, () => {
-  console.log(`API is running at http://localhost:${port}/search?q=`);
-  console.log(`Player is running at http://localhost:${port}/?videoId=`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`API is running at http://localhost:${port}/search?q=`);
+    console.log(`Player is running at http://localhost:${port}/?videoId=`);
+  });
+}
+
+// Export for Vercel
+module.exports = app;
